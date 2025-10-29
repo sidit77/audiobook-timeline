@@ -32,7 +32,8 @@ async fn main() -> anyhow::Result<()> {
     let now = Timestamp::now();
     for x in results.iter().unique_by(|x| (x.author.clone(), x.title.clone())) {
         if past && x.publication_datetime > now {
-            println!("------- NOW -------");
+            let t = now.to_zoned(TimeZone::system());
+            println!("------- NOW ({:02}:{:02}) -------", t.hour(), t.minute());
             past = false;
         }
         let t = x.publication_datetime.to_zoned(TimeZone::system());
