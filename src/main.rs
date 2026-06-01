@@ -10,7 +10,20 @@ async fn main() -> anyhow::Result<()> {
 
     let client = Client::new();
 
-    let config: Config = toml::from_str(&std::fs::read_to_string("audiobooks.toml")?)?;
+    //let config: Config = toml::from_str(&std::fs::read_to_string("audiobooks.toml")?)?;
+    // Try to find the config file in the same directory as the binary, if not found, try the current working directory
+    let config_path = std::env::current_exe()?
+        .parent()
+        .expect("binary has no parent directory")
+        .join("audiobooks.toml");
+    
+    let config_path = if config_path.exists() {
+        config_path
+    } else {
+        std::path::PathBuf::from("audiobooks.toml")
+    };
+    
+    let config: Config = toml::from_str(&std::fs::read_to_string(config_path)?)?;
 
     let mut results = {
         let task = config
@@ -37,7 +50,17 @@ async fn main() -> anyhow::Result<()> {
             past = false;
         }
         let t = x.publication_datetime.to_zoned(TimeZone::system());
-        println!("{:02}.{:02}.{:04} {:02}:{:02}: {} ({})", t.day(), t.month(), t.year(), t.hour(), t.minute(), x.title, x.author)
+        //println!("{:02}.{:02}.{:04} {:02}:{:02}: {} ({}) [{} #{}]", t.day(), t.month(), t.year(), t.hour(), t.minute(), x.title, x.author,x.series.as_ref().map(|s| s.title.clone()).unwrap_or_default(), x.series.as_ref().map(|s| s.sequence.clone()).unwrap_or_default());
+        // If the book is part of a series, print the series title and sequence number in the format "Series Title #Sequence", otherwise print "Standalone"
+        let series_str = x.series.as_ref()
+            .filter(|s| !s.title.is_empty())
+            .map(|s| format!(" [{} #{}]", s.title, s.sequence))
+            .unwrap_or_default();
+        println!(
+            "{:02}.{:02}.{:04} {:02}:{:02}: {} ({}){series_str}",
+            t.day(), t.month(), t.year(), t.hour(), t.minute(),
+            x.title, x.author
+        );
     }
 
     Ok(())
@@ -82,8 +105,19 @@ struct Book {
     publication_datetime: Timestamp,
     language: String,
     //asin: String,
+    #[serde(default, deserialize_with = "deserialize_first")]
+    series: Option<Series>,
 }
-
+fn deserialize_first<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Series>, D::Error> {
+    Ok(Vec::<Series>::deserialize(d)?.into_iter().next())
+}
+#[derive(Debug, Clone, Deserialize)]
+struct Series {
+    //asin: String,
+    sequence: String,
+    title: String,
+    //url: String,
+}
 #[derive(Debug, Clone, Deserialize)]
 struct Config {
     languages: Vec<String>,
