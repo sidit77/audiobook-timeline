@@ -51,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
         }
         let t = x.publication_datetime.to_zoned(TimeZone::system());
         //println!("{:02}.{:02}.{:04} {:02}:{:02}: {} ({}) [{} #{}]", t.day(), t.month(), t.year(), t.hour(), t.minute(), x.title, x.author,x.series.as_ref().map(|s| s.title.clone()).unwrap_or_default(), x.series.as_ref().map(|s| s.sequence.clone()).unwrap_or_default());
-        // If the book is part of a series, print the series title and sequence number in the format "Series Title #Sequence", otherwise print "Standalone"
+        // If the book is part of a series, print the series title and sequence number
         let series_str = x.series.as_ref()
             .filter(|s| !s.title.is_empty())
             .map(|s| format!(" [{} #{}]", s.title, s.sequence))
